@@ -4,6 +4,9 @@ module tb_frac_phase_estimator;
 
     localparam int TDC_WIDTH  = 8;
     localparam int FRAC_WIDTH = 16;
+    
+    real t_res_ps    = 25.0; //rozdzielczość TDC
+    real t_period_ps = 416.7; //okres DCO dla ok 2.4 GHz
 
     logic clk;
     logic rst_n;
@@ -76,6 +79,46 @@ task automatic apply_test(
     end
 endtask
 
+function automatic int tdc_model(input real delta_t_ps);
+    begin
+        tdc_model = int'(delta_t_ps / t_res_ps);
+    end
+endfunction
+
+task automatic apply_time_test(real delta_t_ps);
+    int tdc_val;
+    int period_val;
+    int expected;
+
+    begin
+        tdc_val   = tdc_model(delta_t_ps);
+        period_val = int'(t_period_ps / t_res_ps);
+
+        expected = (tdc_val << FRAC_WIDTH) / period_val;
+
+        @(negedge clk);
+        tdc_code    = tdc_val[TDC_WIDTH-1:0];
+        period_code = period_val[TDC_WIDTH-1:0];
+        meas_valid  = 1'b1;
+
+        @(posedge clk);
+        #1;
+
+        if (phf_frac !== expected[FRAC_WIDTH-1:0]) begin
+            $display("ERROR Δt=%0f ps", delta_t_ps);
+            $display(" expected=%0d got=%0d", expected, phf_frac);
+            $fatal;
+        end else begin
+            $display("OK Δt=%0f ps → phf=%0d", delta_t_ps, phf_frac);
+        end
+
+        @(negedge clk);
+        meas_valid = 0;
+    end
+endtask
+
+
+
     initial begin
         $dumpfile("results/frac_phase_estimator.vcd");
         $dumpvars(0, tb_frac_phase_estimator);
@@ -101,6 +144,13 @@ endtask
         apply_test(5, 20);
         apply_test(10, 20);
         apply_test(19, 20);
+        
+        apply_time_test(0.0);
+	apply_time_test(50.0);
+	apply_time_test(100.0);
+	apply_time_test(200.0);
+	apply_time_test(300.0);
+	apply_time_test(400.0);
 
         $display("Wszystkie testy zakonczone poprawnie.");
         $finish;
