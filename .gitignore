@@ -1,0 +1,18 @@
+# build / symulacje
+*.vcd
+*.fst
+*.log
+*.out
+*.wlf
+
+# nix / system
+result/
+.nix-*
+
+# edytory
+*.swp
+*.swo
+*~
+
+# python
+__pycache__/
