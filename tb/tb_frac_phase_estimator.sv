@@ -8,6 +8,11 @@ module tb_frac_phase_estimator;
     real t_res_ps    = 25.0; //rozdzielczość TDC
     real t_period_ps = 416.7; //okres DCO dla ok 2.4 GHz
 
+    real phf_est_norm;
+    real phf_ideal;
+
+    integer csv_file;
+
     logic clk;
     logic rst_n;
 
@@ -31,8 +36,9 @@ module tb_frac_phase_estimator;
         .phf_frac(phf_frac)
     );
 
-    initial begin
-        clk = 1'b0;
+    initial begin  
+
+    clk = 1'b0;
         forever #5 clk = ~clk;   // okres zegara = 10 ns
     end
 
@@ -120,6 +126,12 @@ endtask
 
 
     initial begin
+
+	 csv_file = $fopen("results/phf_sweep.csv", "w");
+
+	    $fwrite(csv_file,
+	"delta_t_ps,tdc_code,phf_est_norm,phf_ideal\n");
+
         $dumpfile("results/frac_phase_estimator.vcd");
         $dumpvars(0, tb_frac_phase_estimator);
 
@@ -151,6 +163,42 @@ endtask
 	apply_time_test(200.0);
 	apply_time_test(300.0);
 	apply_time_test(400.0);
+
+for (int i = 0; i <= 400; i += 5) begin
+    real delta;
+    int tdc_val;
+    int period_val;
+
+    delta = i;
+
+    tdc_val    = tdc_model(delta);
+    period_val = int'(t_period_ps / t_res_ps);
+
+    phf_ideal = delta / t_period_ps;
+
+    @(negedge clk);
+    tdc_code    = tdc_val[TDC_WIDTH-1:0];
+    period_code = period_val[TDC_WIDTH-1:0];
+    meas_valid  = 1'b1;
+
+    @(posedge clk);
+    #1;
+
+    phf_est_norm = real'(phf_frac) / (2.0 ** FRAC_WIDTH);
+
+    $fwrite(csv_file,
+        "%f,%0d,%f,%f\n",
+        delta,
+        tdc_val,
+        phf_est_norm,
+        phf_ideal
+    );
+
+    @(negedge clk);
+    meas_valid = 1'b0;
+end
+
+$fclose(csv_file);
 
         $display("Wszystkie testy zakonczone poprawnie.");
         $finish;
