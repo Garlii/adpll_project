@@ -5,7 +5,7 @@ module tb_frac_phase_estimator;
     localparam int TDC_WIDTH  = 8;
     localparam int FRAC_WIDTH = 16;
     
-    real t_res_ps    = 25.0; //rozdzielczość TDC
+    real t_res_ps    = 40.0; //rozdzielczość TDC
     real t_period_ps = 416.7; //okres DCO dla ok 2.4 GHz
 
     real phf_est_norm;
